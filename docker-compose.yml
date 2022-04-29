@@ -1,0 +1,64 @@
+version: "3.8"
+services:
+  mysqlDb:
+    image: mysql:5.7
+    container_name: mysql-container
+    networks:
+      - internal_network
+    expose:
+      - "3307"
+    ports:
+      - "3306:3307"
+    restart: on-failure
+    env_file:
+      - ./backend/.env
+    environment:
+      MYSQL_ROOT_PASSWORD: '123456'
+      MYSQL_DATABASE: 'morpher'
+      MYSQL_USER: 'db_user'
+      MYSQL_PASSWORD: '123456'
+    command: --default-authentication-plugin=mysql_native_password
+    volumes:
+      - "./init:/docker-entrypoint-initdb.d"
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: backend-container
+    networks:
+      - internal_network
+    depends_on:
+      - mysqlDb
+    expose:
+      - "3535"
+    ports:
+      - "3535:3535"
+    restart: on-failure
+    volumes:
+      - ./backend:/api
+    env_file:
+      - ./backend/.env
+
+  client:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: front-container
+    networks:
+      - internal_network
+    ports:
+      - "3536:8080"
+    volumes:
+      - ./frontend:/client
+    depends_on:
+      - api
+    command: npm run dev
+
+networks:
+  internal_network:
+    name: "morpher"
+
+volumes:
+  mysqlDb:
+    driver: local
